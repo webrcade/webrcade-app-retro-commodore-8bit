@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Fragment } from 'react';
 import { Component } from 'react';
 
 import {
@@ -10,9 +10,13 @@ import {
   FieldControl,
   TelevisionWhiteImage,
   GamepadWhiteImage,
+  KeyboardWhiteImage,
+  // ScreenSizeSelect,
+  // ScreenControlsSelect,
   Switch,
   WebrcadeContext,
 } from '@webrcade/app-common';
+import { VkTransparencySelect } from './vktransparencyselect';
 
 export class CommodoreSettingsEditor extends Component {
   constructor() {
@@ -34,12 +38,18 @@ export class CommodoreSettingsEditor extends Component {
         bilinearMode: emulator.getPrefs().isBilinearEnabled(),
         origScreenSize: emulator.getPrefs().getScreenSize(),
         screenSize: emulator.getPrefs().getScreenSize(),
+        origScreenControls: emulator.getPrefs().getScreenControls(),
+        screenControls: emulator.getPrefs().getScreenControls(),
+        origVkTransparency: emulator.getPrefs().getVkTransparency(),
+        vkTransparency: emulator.getPrefs().getVkTransparency(),
+        // origVkCloseOnEnter: emulator.getPrefs().getVkCloseOnEnter(),
+        // vkCloseOnEnter: emulator.getPrefs().getVkCloseOnEnter(),
       },
     });
   }
 
   render() {
-    const { emulator, onClose } = this.props;
+    const { emulator, onClose, showOnScreenControls } = this.props;
     const { tabIndex, values, focusGridComps } = this.state;
 
     const setFocusGridComps = (comps) => {
@@ -54,19 +64,34 @@ export class CommodoreSettingsEditor extends Component {
       <EditorScreen
         showCancel={true}
         onOk={() => {
+          let change = false;
           emulator.setSwapControllers(values.swapControllers);
-          let updated = false;
           if (values.origBilinearMode !== values.bilinearMode) {
             emulator.getPrefs().setBilinearEnabled(values.bilinearMode);
             emulator.updateBilinearFilter();
-            updated = true;
+            change = true;
           }
           if (values.origScreenSize !== values.screenSize) {
             emulator.getPrefs().setScreenSize(values.screenSize);
             emulator.updateScreenSize();
-            updated = true;
+            change = true;
           }
-          if (updated) {
+          if (values.origScreenControls !== values.screenControls) {
+              emulator.getPrefs().setScreenControls(values.screenControls);
+              emulator.updateOnScreenControls();
+              change = true;
+          }
+          if (values.origVkTransparency !== values.vkTransparency) {
+              emulator.getPrefs().setVkTransparency(values.vkTransparency);
+              emulator.updateVkTransparency();
+              change = true;
+          }
+          // if (values.origVkCloseOnEnter !== values.vkCloseOnEnter) {
+          //     emulator.getPrefs().setVkCloseOnEnter(values.vkCloseOnEnter);
+          //     emulator.updateVkCloseOnEnter();
+          //     change = true;
+          // }
+          if (change) {
             emulator.getPrefs().save();
           }
           onClose();
@@ -81,6 +106,7 @@ export class CommodoreSettingsEditor extends Component {
             content: (
               <CommodoreSettingsTab
                 emulator={emulator}
+                showOnScreenControls={showOnScreenControls}
                 isActive={tabIndex === 0}
                 setFocusGridComps={setFocusGridComps}
                 values={values}
@@ -100,7 +126,20 @@ export class CommodoreSettingsEditor extends Component {
                 setValues={setValues}
               />
             ),
-          }
+          },
+          {
+            image: KeyboardWhiteImage,
+            label: 'Virtual Keyboard Settings',
+            content: (
+              <CommodoreVirtualKeyboardTab
+                  emulator={emulator}
+                  isActive={tabIndex === 2}
+                  setFocusGridComps={setFocusGridComps}
+                  values={values}
+                  setValues={setValues}
+              />
+            ),
+          },
         ]}
       />
     );
@@ -153,3 +192,63 @@ class CommodoreSettingsTab extends FieldsTab {
 }
 CommodoreSettingsTab.contextType = WebrcadeContext;
 
+export class CommodoreVirtualKeyboardTab extends FieldsTab {
+  constructor() {
+      super();
+      this.vkTransparencyRef = React.createRef();
+      // this.vkCloseOnEnterRef = React.createRef();
+      this.gridComps = [
+          [this.vkTransparencyRef],
+          // [this.vkCloseOnEnterRef],
+      ];
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+      const { gridComps } = this;
+      const { setFocusGridComps } = this.props;
+      const { isActive } = this.props;
+
+      if (isActive && isActive !== prevProps.isActive) {
+          setFocusGridComps(gridComps);
+      }
+  }
+
+  render() {
+      const { vkTransparencyRef, /*vkCloseOnEnterRef*/ } = this;
+      const { focusGrid } = this.context;
+      const { setValues, values } = this.props;
+
+      return (
+          <Fragment>
+              <FieldRow>
+                  <FieldLabel>Transparency</FieldLabel>
+                  <FieldControl>
+                      <VkTransparencySelect
+                          selectRef={vkTransparencyRef}
+                          // addDefault={true}
+                          onChange={(value) => {
+                              setValues({ ...values, ...{ vkTransparency: value } });
+                          }}
+                          value={values.vkTransparency}
+                          onPad={e => focusGrid.moveFocus(e.type, vkTransparencyRef)}
+                      />
+                  </FieldControl>
+              </FieldRow>
+              {/* <FieldRow>
+                  <FieldLabel>Close on enter</FieldLabel>
+                  <FieldControl>
+                      <Switch
+                          ref={vkCloseOnEnterRef}
+                          onPad={(e) => focusGrid.moveFocus(e.type, vkCloseOnEnterRef)}
+                          onChange={(e) => {
+                              setValues({ ...values, ...{ vkCloseOnEnter: e.target.checked } });
+                          }}
+                          checked={values.vkCloseOnEnter}
+                      />
+                  </FieldControl>
+              </FieldRow> */}
+          </Fragment>
+      );
+  }
+}
+CommodoreVirtualKeyboardTab.contextType = WebrcadeContext;

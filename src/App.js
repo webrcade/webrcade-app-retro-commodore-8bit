@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Fragment } from "react";
 
 import {
   WebrcadeRetroApp
@@ -6,10 +6,25 @@ import {
 
 import { Emulator } from './emulator';
 import { EmulatorPauseScreen } from './pause';
+import { VK_TRANSPARENCY } from "./emulator/prefs";
+import { TouchOverlay } from "./touchoverlay";
+import { Keyboard } from "./keyboard";
 
 import './App.scss';
 
 class App extends WebrcadeRetroApp {
+
+  constructor() {
+    super();
+
+    this.state = {
+      ...this.state,
+      showKeyboard: false,
+      kbTransparency: VK_TRANSPARENCY.HIGH,
+      kbCloseOnEnter: true
+    };
+  }
+
   createEmulator(app, isDebug) {
     return new Emulator(app, isDebug);
   }
@@ -28,7 +43,7 @@ class App extends WebrcadeRetroApp {
   }
 
   getBiosUrls(appProps) {
-    return appProps.commodore8bit_bios;
+    return appProps.commodore8bit_bios ? appProps.commodore8bit_bios : [];
   }
 
   isDiscBased() {
@@ -53,6 +68,45 @@ class App extends WebrcadeRetroApp {
         isEditor={this.isEditor}
         isStandalone={this.isStandalone}
       />
+    );
+  }
+
+  showCanvas() {
+    this.setState({showCanvas: true});
+  }
+
+  isKeyboardShown() {
+    return this.state.showKeyboard;
+  }
+
+  setKeyboardShown(value) {
+    try {
+      // window.Module._emDisableGamepad(value);
+    } catch (e) {}
+    this.setState({showKeyboard: value})
+  }
+
+  setKeyboardTransparency(value) {
+    this.setState({kbTransparency: value});
+  }
+
+  setKeyboardCloseOnEnter(value) {
+    this.setState({kbCloseOnEnter: value});
+  }
+
+  render() {
+    const { showCanvas, showKeyboard, kbTransparency, kbCloseOnEnter} = this.state;
+
+    return (
+      <Fragment>
+        {super.render()}
+        <TouchOverlay show={showCanvas} />
+        <Keyboard
+          show={showKeyboard}
+          transparency={kbTransparency}
+          closeOnEnter={kbCloseOnEnter}
+        />
+      </Fragment>
     );
   }
 }
