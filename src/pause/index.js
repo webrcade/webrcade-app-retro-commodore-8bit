@@ -9,7 +9,7 @@ import {
   EditorScreen,
   GamepadWhiteImage,
   KeyboardWhiteImage,
-  Atari2600Background,
+  Commodore64Background,
   PauseScreenButton,
   Resources,
   SaveStatesEditor,
@@ -155,7 +155,7 @@ export class EmulatorPauseScreen extends Component {
         ) : null}
         {mode === ModeEnum.STATE ? (
           <SaveStatesEditor
-            emptyImageSrc={Atari2600Background}
+            emptyImageSrc={Commodore64Background}
             emulator={emulator}
             onClose={closeCallback}
             showStatusCallback={emulator.saveMessageCallback}

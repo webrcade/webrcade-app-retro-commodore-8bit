@@ -17,6 +17,7 @@ import {
   WebrcadeContext,
 } from '@webrcade/app-common';
 import { VkTransparencySelect } from './vktransparencyselect';
+import { DiskSelect } from './diskselect';
 
 export class CommodoreSettingsEditor extends Component {
   constructor() {
@@ -42,6 +43,8 @@ export class CommodoreSettingsEditor extends Component {
         screenControls: emulator.getPrefs().getScreenControls(),
         origVkTransparency: emulator.getPrefs().getVkTransparency(),
         vkTransparency: emulator.getPrefs().getVkTransparency(),
+        origMediaIndex: emulator.getMediaIndex(),
+        mediaIndex: emulator.getMediaIndex()
         // origVkCloseOnEnter: emulator.getPrefs().getVkCloseOnEnter(),
         // vkCloseOnEnter: emulator.getPrefs().getVkCloseOnEnter(),
       },
@@ -85,6 +88,11 @@ export class CommodoreSettingsEditor extends Component {
               emulator.getPrefs().setVkTransparency(values.vkTransparency);
               emulator.updateVkTransparency();
               change = true;
+          }
+
+          const newMediaIndex = parseInt(values.mediaIndex);
+          if (values.origMediaIndex !== newMediaIndex) {
+            emulator.setMediaIndex(newMediaIndex, true);
           }
           // if (values.origVkCloseOnEnter !== values.vkCloseOnEnter) {
           //     emulator.getPrefs().setVkCloseOnEnter(values.vkCloseOnEnter);
@@ -147,10 +155,20 @@ export class CommodoreSettingsEditor extends Component {
 }
 
 class CommodoreSettingsTab extends FieldsTab {
-  constructor() {
-    super();
+  constructor(props) {
+    super(props);
     this.swapControllersRef = React.createRef();
-    this.gridComps = [[this.swapControllersRef]];
+    this.mediaRef = React.createRef();
+    this.mediaList = props.emulator.getMediaList();
+    this.gridComps = [
+      [this.swapControllersRef]
+    ];
+
+    if (this.mediaList && this.mediaList.length > 1 ) {
+      this.gridComps.push(
+        [this.mediaRef]
+      );
+    }
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -164,9 +182,9 @@ class CommodoreSettingsTab extends FieldsTab {
   }
 
   render() {
-    const { swapControllersRef } = this;
+    const { swapControllersRef, mediaRef, mediaList } = this;
     const { focusGrid } = this.context;
-    const { setValues, values } = this.props;
+    const { setValues, values, emulator } = this.props;
 
     return (
       <>
@@ -178,14 +196,30 @@ class CommodoreSettingsTab extends FieldsTab {
               onChange={(e) => {
                 setValues({
                   ...values,
-                  ...{ swapControllers: e.target.checked},
+                  ...{ swapControllers: !e.target.checked},
                 })
               }}
-              checked={values.swapControllers}
+              checked={!values.swapControllers}
               onPad={(e) => focusGrid.moveFocus(e.type, swapControllersRef)}
             />
           </FieldControl>
         </FieldRow>
+        {mediaList && mediaList.length > 1 && (
+          <FieldRow>
+            <FieldLabel>Current Disk</FieldLabel>
+            <FieldControl>
+              <DiskSelect
+                selectRef={mediaRef}
+                emulator={emulator}
+                onChange={(value) => {
+                  setValues({ ...values, ...{ mediaIndex: value } });
+                }}
+                value={values.mediaIndex}
+                onPad={e => focusGrid.moveFocus(e.type, mediaRef)}
+              />
+            </FieldControl>
+          </FieldRow>
+        )}
       </>
     );
   }

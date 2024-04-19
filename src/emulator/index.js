@@ -21,6 +21,8 @@ export class Emulator extends RetroAppWrapper {
     this.mouseEvent = false;
     this.prefs = new Prefs(this);
     this.firstFrame = true;
+    this.mediaList = [];
+    this.mediaIndex = 0;
   }
 
   getRegion() {
@@ -42,6 +44,27 @@ export class Emulator extends RetroAppWrapper {
     return super.createDisplayLoop(debug);
   }
 
+  updateSaveStateForSlotProps(slot, props) {
+    props.stateName = this.getMediaList()[this.getMediaIndex()].stateName;
+  }
+
+  async loadStateForSlot(slot, currentSlot) {
+    const stateName = currentSlot.stateName;
+    if (stateName) {
+      const mediaList = this.getMediaList();
+      for (let i = 0; i < mediaList.length; i++) {
+        const media = mediaList[i];
+        if (media.stateName === stateName) {
+          console.log("Loading disk: " + media.path);
+          this.setMediaIndex(i, true);
+        }
+      }
+    }
+
+    return await super.loadStateForSlot(slot)
+  }
+
+
   isTouchEvent() {
     return this.touchEvent;
   }
@@ -58,9 +81,6 @@ export class Emulator extends RetroAppWrapper {
 
   getPrefs() {
     return this.prefs;
-  }
-
-  async saveState() {
   }
 
   isEscapeHackEnabled() {
@@ -86,6 +106,8 @@ export class Emulator extends RetroAppWrapper {
       this.loadMessageCallback(null);
     }
   }
+
+  async saveState() {}
 
   toggleKeyboard() {
     const { app } = this;
@@ -204,6 +226,135 @@ export class Emulator extends RetroAppWrapper {
     Module._wrc_set_options(this.OPT16);
   }
 
+  getMediaList() {
+    return this.mediaList;
+  }
+
+  setMediaIndex(index, eject = false) {
+    const { Module } = window;
+    this.mediaIndex = index;
+    const currentMedia = this.mediaList[this.mediaIndex];
+    if (index === 0) {
+      this.setStateFilePath(currentMedia.statePath);
+    }
+
+    if (eject) {
+      Module._wrc_set_options(this.OPT12);
+    }
+  }
+
+  getMediaIndex() {
+    return this.mediaIndex;
+  }
+
+  getMediaPath() {
+    return this.mediaList[this.mediaIndex].path;
+  }
+
+  onStoreMedia() {
+    const { FS } = window;
+
+    this.mediaList = [];
+
+    for (let i = 0; i < this.media.length; i++) {
+      const m = this.media[i];
+      const bytes = m[0];
+      let name = m[1];
+
+      if (!name) {
+        name = "game" + i + ".bin";
+      }
+
+      let fileName = "";
+      let ext = "";
+
+      const extIdx = name.lastIndexOf(".");
+      if (extIdx !== -1) {
+        fileName = name.substring(0, extIdx);
+        ext = name.substring(extIdx + 1);
+      }
+
+      const pstartIdx = fileName.indexOf("(");
+      const pendIdx = fileName.lastIndexOf(")");
+
+      let parens = "";
+      if (pstartIdx !== -1 && pendIdx !== -1) {
+        parens = fileName.substring(pstartIdx, pendIdx + 1);
+      }
+
+      const updatedNameNoExt = "game" +
+        (parens.length > 0 ? (" " + parens) : "") +
+        (fileName.toLowerCase().indexOf("ntsc") !== -1 ? " NTSC" : "") +
+        (fileName.toLowerCase().indexOf("pal") !== -1 ? " PAL" : "");
+
+      const updatedName = updatedNameNoExt +
+        (ext.length > 0 ? ("." + ext) : "");
+
+      const stateName = updatedNameNoExt + ".state";
+
+      const currentMedia = {
+        name: updatedName,
+        path: this.RA_DIR + updatedName,
+        stateName: stateName,
+        statePath: "/home/web_user/retroarch/userdata/states/" + stateName,
+        originalName: name,
+        shortName: name,
+      }
+
+      this.mediaList.push(currentMedia);
+
+      if (i === 0) {
+        this.game = currentMedia.path;
+        this.setMediaIndex(0);
+      }
+
+      let stream = FS.open(currentMedia.path, 'a');
+      FS.write(stream, bytes, 0, bytes.length, 0, true);
+      FS.close(stream);
+    }
+
+    // Determine unique names
+    if (this.mediaList.length > 0) {
+      const compare = this.mediaList[0].originalName;
+
+      let commonEnd = 0;
+      let startParen = -1;
+      for (commonEnd = 0; commonEnd < compare.length; commonEnd++) {
+        let stop = false;
+        for (let i = 0; i < this.mediaList.length; i++) {
+          const current = this.mediaList[i].originalName;
+          if (commonEnd >= (current.length - 1)) {
+            stop = true;
+            break;
+          }
+
+          if (current[commonEnd] === "(") {
+            startParen = commonEnd;
+          } else if (current[commonEnd] === ")") {
+            startParen = -1;
+          }
+
+          if (current[commonEnd] !== compare[commonEnd]) {
+            stop = true;
+            break;
+          }
+        }
+        if (stop) break;
+      }
+
+      for (let i = 0; i < this.mediaList.length; i++) {
+        const curr = this.mediaList[i];
+        curr.shortName = curr.originalName.substring(startParen !== -1 ? startParen : commonEnd);
+        const lastDot = curr.shortName.indexOf(".");
+        if (lastDot !== -1) {
+          curr.shortName = curr.shortName.substring(0, lastDot);
+        }
+      }
+    }
+
+    console.log(this.mediaList);
+  }
+
   applyGameSettings() {
     const { Module } = window;
     const props = this.getProps();
@@ -211,7 +362,7 @@ export class Emulator extends RetroAppWrapper {
     console.log(props);
 
     if (this.swapControllers === null) {
-      this.swapControllers = props.swap ? true : false;
+      this.swapControllers = props.swap ? false : true;
     }
 
     let options = 0;
