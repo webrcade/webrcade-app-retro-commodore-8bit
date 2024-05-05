@@ -1,14 +1,37 @@
 import {
   DisplayLoop,
   RetroAppWrapper,
+  Controllers,
+  Controller,
+  blobToStr,
+  md5,
   SCREEN_CONTROLS,
   LOG,
-  // normalizeFileName,
+  KCODES,
+  CIDS,
+  KeyCodeToControlMapping,
 } from '@webrcade/app-common';
 
 import { Prefs } from './prefs'
+import keycodes from "../keyboard/c64-keymap-positional.json"
+import { createEmptyDisk } from './emptydisk';
+
+export class CommodoreKeyCodeToControlMapping extends KeyCodeToControlMapping {
+  constructor() {
+    super({
+      [KCODES.ARROW_UP]: CIDS.UP,
+      [KCODES.ARROW_DOWN]: CIDS.DOWN,
+      [KCODES.ARROW_RIGHT]: CIDS.RIGHT,
+      [KCODES.ARROW_LEFT]: CIDS.LEFT,
+      [KCODES.Z]: CIDS.A,
+      [KCODES.X]: CIDS.B,
+    });
+  }
+}
 
 export class Emulator extends RetroAppWrapper {
+
+  SAVE_NAME = 'sav';
 
   constructor(app, debug = false) {
     super(app, debug);
@@ -23,6 +46,37 @@ export class Emulator extends RetroAppWrapper {
     this.firstFrame = true;
     this.mediaList = [];
     this.mediaIndex = 0;
+    this.keyboardEvent = false;
+    this.keyboardJoystickMode = true;
+    this.selectDown = false;
+  }
+
+  createControllers() {
+    return new Controllers([
+      new Controller(new CommodoreKeyCodeToControlMapping()),
+      new Controller(),
+      new Controller(),
+      new Controller(),
+    ]);
+  }
+
+  pollControls() {
+    const { controllers } = this;
+
+    super.pollControls();
+
+    if (!this.paused) {
+      if (controllers.isControlDown(0, CIDS.SELECT)) {
+        if (this.selectDown) return;
+        this.selectDown = true;
+        controllers
+          .waitUntilControlReleased(0, CIDS.SELECT)
+            .then(() => {
+              this.toggleKeyboard();
+              this.selectDown = false;
+            });
+      }
+    }
   }
 
   getRegion() {
@@ -64,6 +118,15 @@ export class Emulator extends RetroAppWrapper {
     return await super.loadStateForSlot(slot)
   }
 
+  isKeyboardJoystickMode() {
+    return this.keyboardJoystickMode;
+  }
+
+  setKeyboardJoystickMode(val) {
+    this.controllers.setKeyboardDisabled(!val);
+    return this.keyboardJoystickMode = val;
+
+  }
 
   isTouchEvent() {
     return this.touchEvent;
@@ -97,30 +160,106 @@ export class Emulator extends RetroAppWrapper {
     super.onPause(p);
   }
 
+  async getFileContentMd5(content) {
+    if (!(content instanceof Blob)) {
+      content = new Blob([content]);
+    }
+    return md5(await blobToStr(content));
+  }
 
   async loadState() {
-    // Check cloud storage (eliminate delay when showing settings)
+    const { FS } = window;
+
     try {
-      await this.getSaveManager().isCloudEnabled(this.loadMessageCallback);
-    } finally {
-      this.loadMessageCallback(null);
+      const saveName = `${this.SAVE_NAME}.zip`;
+
+      // Load from new save format
+      const files = await this.getSaveManager().load(
+        `${this.saveStatePrefix}${saveName}`,
+        this.loadMessageCallback,
+      );
+
+      // Cache file hashes
+      await this.getSaveManager().checkFilesChanged(files);
+
+      let s = null;
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        s = f.content;
+        if (s) {
+          FS.writeFile(this.RA_DIR + f.name, s);
+        }
+      }
+    } catch (e) {
+      LOG.error('Error loading save state: ' + e);
     }
   }
 
-  async saveState() {}
+  async saveState() {
+    const { FS } = window;
+    const files = [];
+    try {
+      const media = this.getMediaList();
+      if (!media) return;
+      for (let i = 0; i < media.length; i++) {
+        const m = media[i];
+        try {
+          const path = m.path;
+          const res = FS.analyzePath(path, true);
+          if (res.exists) {
+            const s = FS.readFile(path);
+            if (s) {
+              const md5 = await this.getFileContentMd5(s);
+              // Only add if the file is different than the original
+              if (md5 !== m.md5) {
+                files.push({
+                  name: m.name,
+                  content: s,
+                });
+              }
+            }
+          }
+        } catch (e) {
+          LOG.error(e);
+        }
+      }
+
+      console.log(files);
+
+      const hasChanges = await this.getSaveManager().checkFilesChanged(files);
+      console.log("Has changes: " + hasChanges);
+      if (hasChanges) {
+        console.log(`${this.saveStatePrefix}${this.SAVE_NAME}`);
+        await this.getSaveManager().save(
+          `${this.saveStatePrefix}${this.SAVE_NAME}`,
+          files,
+          this.saveMessageCallback,
+        );
+      }
+    } catch (e) {
+      LOG.error('Error persisting save state: ' + e);
+    }
+  }
 
   toggleKeyboard() {
     const { app } = this;
-    // console.log('toggle keyboard');
 
     const show = !app.isKeyboardShown();
+    this.disableInput = show ? true : false;
     app.setKeyboardShown(show);
-    //window.Module._emKeyboard()
+  }
+
+  isKeyboardEvent() {
+    return this.keyboardEvent;
   }
 
   onFrame() {
     if (this.firstFrame) {
       this.firstFrame = false;
+
+      // Initial joystick mode
+      this.setKeyboardJoystickMode(this.isKeyboardJoystickMode());
+
       setTimeout(() => {
         const onTouch = () => { this.onTouchEvent() };
         window.addEventListener("touchstart", onTouch);
@@ -132,6 +271,49 @@ export class Emulator extends RetroAppWrapper {
         window.addEventListener("mousedown", onMouse);
         window.addEventListener("mouseup", onMouse);
         window.addEventListener("mousemove", onMouse);
+
+        document.onkeydown = (e) => {
+
+          if (
+            this.paused ||
+            this.app.isKeyboardShown() ||
+            (this.isKeyboardJoystickMode() &&
+              this.controllers.getController(0).getKeyCodeToControllerMapping().getKeyCodeToControlId()[e.code] !== undefined)
+          ) {
+            return;
+          }
+          this.onKeyboardEvent();
+          if (e.repeat !== undefined && e.repeat) {
+            return;
+          }
+
+          const key = keycodes["" + e.code];
+          if (key) {
+              this.sendKeyDown(key.code)
+          }
+          e.stopPropagation();
+          e.preventDefault();
+        }
+
+        document.onkeyup = (e) => {
+          if (
+            this.paused ||
+            this.app.isKeyboardShown() ||
+            (this.isKeyboardJoystickMode() &&
+              this.controllers.getController(0).getKeyCodeToControllerMapping().getKeyCodeToControlId()[e.code] !== undefined)
+          ) {
+            return;
+          }
+
+          this.onKeyboardEvent();
+
+          const key = keycodes["" + e.code];
+          if (key) {
+            this.sendKeyUp(key.code)
+          }
+          e.stopPropagation();
+          e.preventDefault();
+        }
 
         this.app.showCanvas(); // TODO: Where should this go?
       }, 10);
@@ -145,31 +327,34 @@ export class Emulator extends RetroAppWrapper {
     }
   }
 
-  onTouchEvent() {
+  checkOnScreenControls() {
     const controls = this.prefs.getScreenControls();
+    if (controls === SCREEN_CONTROLS.SC_AUTO) {
+      setTimeout(() => {
+        this.showTouchOverlay(true);
+        this.app.forceRefresh();
+      }, 0);
+    }
+  }
 
+  onKeyboardEvent() {
+    if (!this.keyboardEvent) {
+      this.keyboardEvent = true;
+      this.checkOnScreenControls();
+    }
+  }
+
+  onTouchEvent() {
     if (!this.touchEvent) {
-      if (controls === SCREEN_CONTROLS.SC_AUTO) {
-        setTimeout(() => {
-          this.showTouchOverlay(true);
-          this.app.forceRefresh();
-        }, 0);
-      }
       this.touchEvent = true;
+      this.checkOnScreenControls();
     }
   }
 
   onMouseEvent() {
-    const controls = this.prefs.getScreenControls();
-
     if (!this.mouseEvent) {
-      if (controls === SCREEN_CONTROLS.SC_AUTO) {
-        setTimeout(() => {
-          this.showTouchOverlay(true);
-          this.app.forceRefresh();
-        }, 0);
-      }
       this.mouseEvent = true;
+      this.checkOnScreenControls();
     }
 
     this.mouseEventCount++;
@@ -209,8 +394,6 @@ export class Emulator extends RetroAppWrapper {
   }
 
   getKeyCode() {
-    console.log(this.keyCode)
-    console.log("Get key code: " + this.keyCode);
     return this.keyCode;
   }
 
@@ -251,54 +434,68 @@ export class Emulator extends RetroAppWrapper {
     return this.mediaList[this.mediaIndex].path;
   }
 
-  onStoreMedia() {
+  async onStoreMedia() {
     const { FS } = window;
 
     this.mediaList = [];
+    const saveDisks = this.saveDisks ? this.saveDisks : 0;
 
-    for (let i = 0; i < this.media.length; i++) {
+    let saveDiskIndex = 0;
+
+    for (let i = 0; i < (this.media.length + saveDisks); i++) {
+      const isSaveDisk = (i >= this.media.length);
+
       const m = this.media[i];
-      const bytes = m[0];
-      let name = m[1];
-
-      if (!name) {
-        name = "game" + i + ".bin";
-      }
-
+      const bytes = isSaveDisk ? createEmptyDisk(++saveDiskIndex) : m[0];
+      let name = isSaveDisk ? ("Save Disk " + (saveDiskIndex)) : m[1];
       let fileName = "";
       let ext = "";
+      let updatedName = "";
+      let stateName = "";
 
-      const extIdx = name.lastIndexOf(".");
-      if (extIdx !== -1) {
-        fileName = name.substring(0, extIdx);
-        ext = name.substring(extIdx + 1);
+      if (!isSaveDisk) {
+        if (!name) {
+          name = "game" + i + ".bin";
+        }
+
+        const extIdx = name.lastIndexOf(".");
+        if (extIdx !== -1) {
+          fileName = name.substring(0, extIdx);
+          ext = name.substring(extIdx + 1);
+        }
+
+        const pstartIdx = fileName.indexOf("(");
+        const pendIdx = fileName.lastIndexOf(")");
+
+        let parens = "";
+        if (pstartIdx !== -1 && pendIdx !== -1) {
+          parens = fileName.substring(pstartIdx, pendIdx + 1);
+        }
+
+        const updatedNameNoExt = "game" + i +
+          (parens.length > 0 ? (" " + parens) : "") +
+          (fileName.toLowerCase().indexOf("ntsc") !== -1 ? " NTSC" : "") +
+          (fileName.toLowerCase().indexOf("pal") !== -1 ? " PAL" : "");
+
+        updatedName = updatedNameNoExt +
+          (ext.length > 0 ? ("." + ext) : "");
+
+        stateName = updatedNameNoExt + ".state";
+      } else {
+        updatedName = "savedisk" + saveDiskIndex;
+        stateName = updatedName + ".state";
+        updatedName += ".d64";
       }
-
-      const pstartIdx = fileName.indexOf("(");
-      const pendIdx = fileName.lastIndexOf(")");
-
-      let parens = "";
-      if (pstartIdx !== -1 && pendIdx !== -1) {
-        parens = fileName.substring(pstartIdx, pendIdx + 1);
-      }
-
-      const updatedNameNoExt = "game" +
-        (parens.length > 0 ? (" " + parens) : "") +
-        (fileName.toLowerCase().indexOf("ntsc") !== -1 ? " NTSC" : "") +
-        (fileName.toLowerCase().indexOf("pal") !== -1 ? " PAL" : "");
-
-      const updatedName = updatedNameNoExt +
-        (ext.length > 0 ? ("." + ext) : "");
-
-      const stateName = updatedNameNoExt + ".state";
 
       const currentMedia = {
         name: updatedName,
+        md5: await this.getFileContentMd5(bytes),
         path: this.RA_DIR + updatedName,
         stateName: stateName,
         statePath: "/home/web_user/retroarch/userdata/states/" + stateName,
         originalName: name,
         shortName: name,
+        isSaveDisk: isSaveDisk,
       }
 
       this.mediaList.push(currentMedia);
@@ -319,9 +516,14 @@ export class Emulator extends RetroAppWrapper {
 
       let commonEnd = 0;
       let startParen = -1;
+      let uniqueNameCount = 0;
       for (commonEnd = 0; commonEnd < compare.length; commonEnd++) {
         let stop = false;
-        for (let i = 0; i < this.mediaList.length; i++) {
+        for (let i = 1; i < this.mediaList.length; i++) {
+          if (this.mediaList[i].isSaveDisk) continue;
+
+          uniqueNameCount++;
+
           const current = this.mediaList[i].originalName;
           if (commonEnd >= (current.length - 1)) {
             stop = true;
@@ -343,8 +545,9 @@ export class Emulator extends RetroAppWrapper {
       }
 
       for (let i = 0; i < this.mediaList.length; i++) {
+        if (this.mediaList[i].isSaveDisk) continue;
         const curr = this.mediaList[i];
-        curr.shortName = curr.originalName.substring(startParen !== -1 ? startParen : commonEnd);
+        curr.shortName = curr.originalName.substring(startParen !== -1 ? startParen : uniqueNameCount > 0 ? commonEnd : 0);
         const lastDot = curr.shortName.indexOf(".");
         if (lastDot !== -1) {
           curr.shortName = curr.shortName.substring(0, lastDot);
@@ -356,6 +559,7 @@ export class Emulator extends RetroAppWrapper {
   }
 
   applyGameSettings() {
+    //alert('apply game settings');
     const { Module } = window;
     const props = this.getProps();
 
@@ -368,6 +572,10 @@ export class Emulator extends RetroAppWrapper {
     let options = 0;
     if (this.swapControllers) {
       options |= this.OPT1;
+    }
+
+    if (props.disableAutoload) {
+      options |= this.OPT2;
     }
 
     Module._wrc_set_options(options);

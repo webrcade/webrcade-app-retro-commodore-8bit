@@ -4,8 +4,8 @@ import {
   ImageButton,
   KeyboardWhiteImage,
   PauseWhiteImage,
-  // MouseWhiteImage,
-  // SwipeWhiteImage
+  VideoGameAssetWhiteImage,
+  VideoGameAssetOffWhiteImage,
 } from '@webrcade/app-common';
 
 import './style.scss'
@@ -54,11 +54,23 @@ export class TouchOverlay extends Component {
               onClick={() => {
                 emulator.toggleKeyboard();
               }}
+              onFocus={(e) => {e.target.blur()}}
             />
+            {emulator.isKeyboardEvent() &&
+              <ImageButton
+                className="touch-overlay-button"
+                imgSrc={emulator.isKeyboardJoystickMode() ? VideoGameAssetWhiteImage : VideoGameAssetOffWhiteImage }
+                onClick={() => {
+                  emulator.setKeyboardJoystickMode(!emulator.isKeyboardJoystickMode());
+                  this.setState({ refresh: this.state.refresh + 1 });
+                }}
+              />
+            }
             <ImageButton
               className="touch-overlay-button touch-overlay-button-last"
               onClick={showPause}
               imgSrc={PauseWhiteImage}
+              onFocus={(e) => {e.target.blur()}}
             />
           </div>
         </div>

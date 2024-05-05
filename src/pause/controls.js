@@ -6,14 +6,15 @@ export class GamepadControlsTab extends ControlsTab {
   render() {
     return (
       <>
-        {/* {this.renderControl('start', 'Reset')}
-        {this.renderControl('select', 'Select')}
+        {this.renderControl('start', 'Enter Key')}
+        {this.renderControl('select', 'Keyboard')}
         {this.renderControl('dpad', 'Move')}
         {this.renderControl('lanalog', 'Move')}
-        {this.renderControl('a', 'Fire')}
-        {this.renderControl('y', 'Color/B&W Switch')}
-        {this.renderControl('lbump', 'Left Difficulty Switch')}
-        {this.renderControl('rbump', 'Right Difficulty Switch')} */}
+        {this.renderControl('a', 'Fire 1')}
+        {this.renderControl('b', 'Fire 2')}
+        {this.renderControl('y', 'Space Bar')}
+        {this.renderControl('lbump', 'Run/stop')}
+        {this.renderControl('rbump', 'F1')}
       </>
     );
   }
@@ -23,16 +24,12 @@ export class KeyboardControlsTab extends ControlsTab {
   render() {
     return (
       <>
-        {/* {this.renderKey('Enter', 'Reset')}
-        {this.renderKey('ShiftRight', 'Select')}
         {this.renderKey('ArrowUp', 'Up')}
         {this.renderKey('ArrowDown', 'Down')}
         {this.renderKey('ArrowLeft', 'Left')}
         {this.renderKey('ArrowRight', 'Right')}
-        {this.renderKey('KeyZ', 'Fire')}
-        {this.renderKey('KeyS', 'Color/B&W Switch')}
-        {this.renderKey('KeyQ', 'Left Difficulty Switch')}
-        {this.renderKey('KeyW', 'Right Difficulty Switch')} */}
+        {this.renderKey('KeyZ', 'Fire 1')}
+        {this.renderKey('KeyX', 'Fire 2')}
       </>
     );
   }

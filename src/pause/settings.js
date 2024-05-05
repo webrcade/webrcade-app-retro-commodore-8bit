@@ -129,6 +129,7 @@ export class CommodoreSettingsEditor extends Component {
               <AppDisplaySettingsTab
                 emulator={emulator}
                 isActive={tabIndex === 1}
+                showOnScreenControls={showOnScreenControls}
                 setFocusGridComps={setFocusGridComps}
                 values={values}
                 setValues={setValues}
@@ -206,7 +207,7 @@ class CommodoreSettingsTab extends FieldsTab {
         </FieldRow>
         {mediaList && mediaList.length > 1 && (
           <FieldRow>
-            <FieldLabel>Current Disk</FieldLabel>
+            <FieldLabel>Current Media</FieldLabel>
             <FieldControl>
               <DiskSelect
                 selectRef={mediaRef}

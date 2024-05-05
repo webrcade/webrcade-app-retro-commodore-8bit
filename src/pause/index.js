@@ -150,6 +150,7 @@ export class EmulatorPauseScreen extends Component {
         {mode === ModeEnum.COMMODORE_SETTINGS ? (
           <CommodoreSettingsEditor
             emulator={emulator}
+            showOnScreenControls={true}
             onClose={closeCallback}
           />
         ) : null}
