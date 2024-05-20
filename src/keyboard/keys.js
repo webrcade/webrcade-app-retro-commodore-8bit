@@ -225,7 +225,7 @@ const KEYS = {
       new KeyDef("Shift").code("ShiftLeft").setWidth(2).setOnClick(toggleLeftShift).setIsEnabledCb(leftShiftEnabled),
       new KeyDef("Space").setWidth(2).code("Space").setOnClick(onKey),
       new KeyDef("Shift").code("ShiftRight").setWidth(2).setOnClick(toggleRightShift).setIsEnabledCb(rightShiftEnabled),
-      new KeyDef("Enter").setWidth(2).code("Enter").setOnClick(onEnter),
+      new KeyDef("Return").setWidth(2).code("Enter").setOnClick(onEnter),
     ],
   ],
   "numbers": [
@@ -281,7 +281,7 @@ const KEYS = {
       new KeyDef("Shift").code("ShiftLeft").setWidth(2).setOnClick(toggleLeftShift).setIsEnabledCb(leftShiftEnabled),
       new KeyDef("Space").setWidth(2).code("Space").setOnClick(onKey),
       new KeyDef("Shift").code("ShiftRight").setWidth(2).setOnClick(toggleRightShift).setIsEnabledCb(rightShiftEnabled),
-      new KeyDef("Enter").setWidth(2).code("Enter").setOnClick(onEnter),
+      new KeyDef("Return").setWidth(2).code("Enter").setOnClick(onEnter),
     ],
   ],
   "caps": [
@@ -337,7 +337,7 @@ const KEYS = {
       new KeyDef("Shift").code("ShiftLeft").setWidth(2).setOnClick(toggleLeftShift).setIsEnabledCb(leftShiftEnabled),
       new KeyDef("Space").setWidth(2).code("Space").setOnClick(onKey),
       new KeyDef("Shift").code("ShiftRight").setWidth(2).setOnClick(toggleRightShift).setIsEnabledCb(rightShiftEnabled),
-      new KeyDef("Enter").setWidth(2).code("Enter").setOnClick(onEnter),
+      new KeyDef("Return").setWidth(2).code("Enter").setOnClick(onEnter),
     ],
   ]
 }

@@ -85,6 +85,21 @@ export class Emulator extends RetroAppWrapper {
     return (region === undefined ? 0 : region);
   }
 
+  getRamExpansionSize() {
+    const props = this.getProps();
+    switch (props.ramExpansion) {
+      case 1: return 128;
+      case 2: return 256;
+      case 3: return 512;
+      case 4: return 1024;
+      case 5: return 2048;
+      case 6: return 4096;
+      case 7: return 8192;
+      case 8: return 16384;
+      default: return 0;
+    }
+  }
+
   setFrameRate(rate) {
     LOG.info("## frame rate set to: " + rate);
     this.frameRate = rate;
@@ -282,7 +297,8 @@ export class Emulator extends RetroAppWrapper {
           ) {
             return;
           }
-          this.onKeyboardEvent();
+          this.onKeyboardEvent(e);
+
           if (e.repeat !== undefined && e.repeat) {
             return;
           }
@@ -305,7 +321,7 @@ export class Emulator extends RetroAppWrapper {
             return;
           }
 
-          this.onKeyboardEvent();
+          this.onKeyboardEvent(e);
 
           const key = keycodes["" + e.code];
           if (key) {
@@ -337,8 +353,8 @@ export class Emulator extends RetroAppWrapper {
     }
   }
 
-  onKeyboardEvent() {
-    if (!this.keyboardEvent) {
+  onKeyboardEvent(e) {
+    if (e.code && !this.keyboardEvent) {
       this.keyboardEvent = true;
       this.checkOnScreenControls();
     }
@@ -383,6 +399,10 @@ export class Emulator extends RetroAppWrapper {
 
   isJiffyDosEnabled() {
     return this.getProps().jiffydos === 1 ? 0 : 1;
+  }
+
+  isTrueDriveEmulationEnabled() {
+    return this.getProps().disableTrueDriveEmulation ? 0 : 1;
   }
 
   getSwapControllers() { return this.swapControllers; }
@@ -438,7 +458,7 @@ export class Emulator extends RetroAppWrapper {
     const { FS } = window;
 
     this.mediaList = [];
-    const saveDisks = this.saveDisks ? this.saveDisks : 0;
+    const saveDisks = this.saveDisks ? this.saveDisks : 1;
 
     let saveDiskIndex = 0;
 
