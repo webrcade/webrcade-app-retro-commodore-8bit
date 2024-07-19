@@ -112,8 +112,8 @@ export class EmulatorPauseScreen extends Component {
       );
     }
 
-    const gamepad = <GamepadControlsTab />;
-    const keyboard = <KeyboardControlsTab />;
+    const gamepad = <GamepadControlsTab emulator={emulator} />;
+    const keyboard = <KeyboardControlsTab emulator={emulator} />;
     const gamepadLabel = Resources.getText(TEXT_IDS.GAMEPAD_CONTROLS);
     const keyboardLabel = Resources.getText(TEXT_IDS.KEYBOARD_CONTROLS);
 

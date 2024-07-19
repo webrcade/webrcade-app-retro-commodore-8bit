@@ -79,10 +79,78 @@ export class Emulator extends RetroAppWrapper {
     }
   }
 
+  sendInput(controller, input, analog0x, analog0y, analog1x, analog1y) {
+    if (!this.disableInput) {
+      this.initMaps();
+
+      let finalInput = input & (this.INP_SELECT | this.INP_UP | this.INP_DOWN | this.INP_LEFT | this.INP_RIGHT)
+      for (let key in this.controls) {
+        let control = this.controls[key];
+        let isDown = control.value & input;
+
+        if ((key === "ra-down" && (this.controllers.isAxisDown(controller, 1))) ||
+           (key === "ra-up" && (this.controllers.isAxisUp(controller, 1))) ||
+          (key === "ra-left" && (this.controllers.isAxisLeft(controller, 1))) ||
+           (key === "ra-right" && (this.controllers.isAxisRight(controller, 1)))) {
+            isDown = true;
+        }
+
+        if (isDown) {
+          const mapped = this.mappings[key];
+          if (mapped) {
+            const m = this.mapped[mapped];
+            if (m) {
+              if (!m.isKey) {
+                finalInput |= m.value;
+              } else if (!control.isDown[controller]) {
+                this.sendKeyDown(m.value);
+              }
+            }
+          }
+          control.isDown[controller] = true;
+        } else if (control.isDown[controller]) {
+          control.isDown[controller] = false;
+          const mapped = this.mappings[key];
+          if (mapped) {
+            const m = this.mapped[mapped];
+            if (m) {
+              if (m.isKey) {
+                this.sendKeyUp(m.value);
+              }
+            }
+          }
+        }
+      }
+
+      window.Module._wrc_set_input(controller, finalInput, 0, 0, 0, 0);
+    }
+  }
+
   getRegion() {
     const props = this.getProps();
     const region = props.region;
     return (region === undefined ? 0 : region);
+  }
+
+  getMappings() {
+    const props = this.getProps();
+    let mappings = props.mappings;
+    if (!mappings) {
+      mappings = {
+        "start": "return",
+        // "left": "joy-left",
+        // "right": "joy-right",
+        // "up": "joy-up",
+        // "down": "joy-down",
+        "a": "fire1",
+        "b": "fire2",
+        "y": "space",
+        "lb": "runstop",
+        "rb": "f1"
+      }
+    };
+    //console.log(mappings)
+    return mappings;
   }
 
   getRamExpansionSize() {
@@ -615,4 +683,229 @@ export class Emulator extends RetroAppWrapper {
   }
 
   getShotAspectRatio() { return this.getDefaultAspectRatio(); }
+
+  initMaps() {
+    if (!this._initMaps) {
+      this._initMaps = true;
+      this.controls = {
+        "left": {
+          value: this.INP_LEFT,
+        },
+        "right": {
+          value: this.INP_RIGHT,
+        },
+        "up": {
+          value: this.INP_UP,
+        },
+        "down": {
+          value: this.INP_DOWN,
+        },
+        "a": {
+          value: this.INP_A,
+        },
+        "b": {
+          value: this.INP_B,
+        },
+        "x": {
+          value: this.INP_X,
+        },
+        "y": {
+          value: this.INP_Y,
+        },
+        "lb": {
+          value: this.INP_LBUMP,
+        },
+        "rb": {
+          value: this.INP_RBUMP,
+        },
+        "lt": {
+          value: this.INP_LTRIG,
+        },
+        "rt": {
+          value: this.INP_RTRIG,
+        },
+        "start": {
+          value: this.INP_START,
+        },
+        "ra-left": {
+          value: 0,
+        },
+        "ra-right": {
+          value: 0,
+        },
+        "ra-up": {
+          value: 0,
+        },
+        "ra-down": {
+          value: 0,
+        }
+      }
+
+      for (let key in this.controls) {
+        this.controls[key].isDown = [false, false, false, false];
+      }
+
+      this.mapped = {
+        "joy-left": {
+          isKey: false,
+          value: this.INP_LEFT
+        },
+        "joy-right": {
+          isKey: false,
+          value: this.INP_RIGHT
+        },
+        "joy-up": {
+          isKey: false,
+          value: this.INP_UP
+        },
+        "joy-down": {
+          isKey: false,
+          value: this.INP_DOWN
+        },
+        "fire1": {
+          isKey: false,
+          value: this.INP_A
+        },
+        "fire2": {
+          isKey: false,
+          value: this.INP_B
+        },
+        "runstop": {
+          isKey: true,
+          value: keycodes["Escape"].code
+        },
+        "space": {
+          isKey: true,
+          value: keycodes["Space"].code
+        },
+        "plus": {
+          isKey: true,
+          value: keycodes["Minus"].code
+        },
+        "minus": {
+          isKey: true,
+          value: keycodes["Equal"].code
+        },
+        "pound": {
+            isKey: true,
+            value: keycodes["Insert"].code
+        },
+        "home": {
+          isKey: true,
+          value: keycodes["Home"].code
+        },
+        "delete": {
+          isKey: true,
+          value: keycodes["Backspace"].code
+        },
+        "leftarrow": {
+          isKey: true,
+          value: keycodes["Backquote"].code
+        },
+        "uparrow": {
+          isKey: true,
+          value: keycodes["Delete"].code
+        },
+        "at": {
+          isKey: true,
+          value: keycodes["BracketLeft"].code
+        },
+        "asterick": {
+          isKey: true,
+          value: keycodes["BracketRight"].code
+        },
+        "colon": {
+          isKey: true,
+          value: keycodes["Semicolon"].code
+        },
+        "semicolon": {
+          isKey: true,
+          value: keycodes["Quote"].code
+        },
+        "equal": {
+          isKey: true,
+          value: keycodes["Backslash"].code
+        },
+        "comma": {
+          isKey: true,
+          value: keycodes["Comma"].code
+        },
+        "period": {
+          isKey: true,
+          value: keycodes["Period"].code
+        },
+        "slash": {
+          isKey: true,
+          value: keycodes["Slash"].code
+        },
+        "control": {
+          isKey: true,
+          value: keycodes["Tab"].code
+        },
+        "restore": {
+          isKey: true,
+          value: keycodes["PageUp"].code
+        },
+        "return": {
+          isKey: true,
+          value: keycodes["Enter"].code
+        },
+        "commodore": {
+          isKey: true,
+          value: keycodes["ControlLeft"].code
+        },
+        "leftshift": {
+          isKey: true,
+          value: keycodes["ShiftLeft"].code
+        },
+        "rightshift": {
+          isKey: true,
+          value: keycodes["ShiftRight"].code
+        },
+        "cursorup": {
+          isKey: true,
+          value: keycodes["ArrowUp"].code
+        },
+        "cursordown": {
+          isKey: true,
+          value: keycodes["ArrowDown"].code
+        },
+        "cursorleft": {
+          isKey: true,
+          value: keycodes["ArrowLeft"].code
+        },
+        "cursorright": {
+          isKey: true,
+          value: keycodes["ArrowRight"].code
+        }
+      }
+
+      // Letters
+      for (let c = 0; c < 26; c++ ) {
+        const character = (c+10).toString(36);
+        this.mapped[character] = {
+          isKey: true,
+          value: keycodes["Key" + character.toUpperCase()].code
+        }
+      }
+
+      // Function Keys
+      for (let c = 1; c <= 8; c++ ) {
+        this.mapped["f" + c] = {
+          isKey: true,
+          value: keycodes["F" + c].code
+        }
+      }
+
+      // Numbers
+      for (let c = 0; c <= 9; c++ ) {
+        this.mapped["" + c] = {
+          isKey: true,
+          value: keycodes["Digit" + c].code
+        }
+      }
+
+      this.mappings = this.getMappings();
+    }
+  }
 }
