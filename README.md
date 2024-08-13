@@ -22,7 +22,7 @@ The underlying emulator is a modified version of the Libretro fork of [VICE](htt
 
 ### Documentation
 
-The [Commodore 64 Application Documentation](https://docs.webrcade.com/apps/emulators/commodore/) includes [keyboard](https://docs.webrcade.com/apps/emulators/commodore/#keyboard) and [gamepad](https://docs.webrcade.com/apps/emulators/commodore/#gamepad) control mappings, information related to [saving changes to game media](https://docs.webrcade.com/apps/emulators/commodore/#saving-changes-to-media) support, and details regarding the use of the emulator within a [webЯcade feed](https://docs.webrcade.com/apps/emulators/commodore/#feed). 
+The [Commodore 64 Application Documentation](https://docs.webrcade.com/apps/emulators/commodore/) includes [keyboard](https://docs.webrcade.com/apps/emulators/commodore/#keyboard) and [gamepad](https://docs.webrcade.com/apps/emulators/commodore/#gamepad) control mappings, information related to [saving changes to game media](https://docs.webrcade.com/apps/emulators/commodore/#saving-changes-to-media), and details regarding the use of the emulator within a [webЯcade feed](https://docs.webrcade.com/apps/emulators/commodore/#feed). 
 
 ## LICENSE
 
