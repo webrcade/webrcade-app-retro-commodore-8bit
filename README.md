@@ -34,4 +34,4 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 ---
 
-The license presented above is limited to the Atari 2600 application for [webЯcade](https://www.webrcade.com).  The underlying Libretro Vice-Libretro project retains its own specific licensing.
+The license presented above is limited to the Commodore 8-bit applications for [webЯcade](https://www.webrcade.com).  The underlying Libretro Vice-Libretro project retains its own specific licensing.
