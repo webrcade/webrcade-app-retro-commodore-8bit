@@ -80,7 +80,7 @@ export class Emulator extends RetroAppWrapper {
   }
 
   sendInput(controller, input, analog0x, analog0y, analog1x, analog1y) {
-    if (!this.disableInput) {
+    if (!this.getDisableInput()) {
       this.initMaps();
 
       let finalInput = input & (this.INP_SELECT | this.INP_UP | this.INP_DOWN | this.INP_LEFT | this.INP_RIGHT)
@@ -237,6 +237,7 @@ export class Emulator extends RetroAppWrapper {
     const { app } = this;
     if (p) {
       try {
+        this.setDisableInput(false);
         app.setKeyboardShown(false);
       } catch (e) {}
     }
@@ -328,7 +329,7 @@ export class Emulator extends RetroAppWrapper {
     const { app } = this;
 
     const show = !app.isKeyboardShown();
-    this.disableInput = show ? true : false;
+    this.setDisableInput(show ? true : false);
     app.setKeyboardShown(show);
   }
 
