@@ -49,6 +49,7 @@ export class Emulator extends RetroAppWrapper {
     this.keyboardEvent = false;
     this.keyboardJoystickMode = true;
     this.selectDown = false;
+    this.gamepadVkPending = false;
   }
 
   createControllers() {
@@ -336,6 +337,23 @@ export class Emulator extends RetroAppWrapper {
   isKeyboardEvent() {
     return this.keyboardEvent;
   }
+
+  handleEscape(controllers) {
+    if (controllers.isControlDown(0, CIDS.LTRIG) && controllers.isControlDown(0, CIDS.RANALOG)) {
+      if (!this.gamepadVkPending) {
+        this.gamepadVkPending = true;
+        controllers
+        .waitUntilControlReleased(0 /*i*/, CIDS.ESCAPE)
+          .then(() => {
+            this.gamepadVkPending = false;
+            this.toggleKeyboard();
+          });
+      }
+      return true;
+    }
+    return false;
+  }
+
 
   onFrame() {
     if (this.firstFrame) {
