@@ -36,8 +36,8 @@ export class CommodoreSettingsEditor extends Component {
 
     const values = {
       swapControllers: emulator.getSwapControllers(),
-      origBilinearMode: emulator.getPrefs().isBilinearEnabled(),
-      bilinearMode: emulator.getPrefs().isBilinearEnabled(),
+      origBilinearMode: emulator.getPrefs().getBilinearMode(),
+      bilinearMode: emulator.getPrefs().getBilinearMode(),
       origScreenSize: emulator.getPrefs().getScreenSize(),
       screenSize: emulator.getPrefs().getScreenSize(),
       origScreenControls: emulator.getPrefs().getScreenControls(),
@@ -77,8 +77,7 @@ export class CommodoreSettingsEditor extends Component {
           let change = false;
           emulator.setSwapControllers(values.swapControllers);
           if (values.origBilinearMode !== values.bilinearMode) {
-            emulator.getPrefs().setBilinearEnabled(values.bilinearMode);
-            emulator.updateBilinearFilter();
+            emulator.getPrefs().setBilinearMode(values.bilinearMode);
             change = true;
           }
           if (values.origScreenSize !== values.screenSize) {
@@ -112,6 +111,7 @@ export class CommodoreSettingsEditor extends Component {
 
           // Set the shader
           await this.shaderService.setShader(values.shaderId);
+          emulator.updateBilinearFilter();
 
           onClose();
         }}
@@ -139,6 +139,7 @@ export class CommodoreSettingsEditor extends Component {
             content: (
               <AppDisplaySettingsTab
                 emulator={emulator}
+                isBilinearMode={true}
                 isActive={tabIndex === 1}
                 showOnScreenControls={showOnScreenControls}
                 setFocusGridComps={setFocusGridComps}
