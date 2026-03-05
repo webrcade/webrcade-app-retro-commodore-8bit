@@ -1,5 +1,5 @@
 import {
-  AppPrefs
+  NewRetroPrefs
 } from '@webrcade/app-common';
 
 export const VK_TRANSPARENCY = {
@@ -12,7 +12,7 @@ export const VK_POSITION = {
   BOTTOM: "bottom"
 }
 
-export class Prefs extends AppPrefs {
+export class Prefs extends NewRetroPrefs {
   constructor(emu) {
     super(emu);
 

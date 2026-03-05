@@ -15,6 +15,8 @@ import {
   // ScreenControlsSelect,
   Switch,
   WebrcadeContext,
+  BlurImage,
+  ShaderSettingsTab,
 } from '@webrcade/app-common';
 import { VkTransparencySelect } from './vktransparencyselect';
 import { DiskSelect } from './diskselect';
@@ -32,22 +34,27 @@ export class CommodoreSettingsEditor extends Component {
   componentDidMount() {
     const { emulator } = this.props;
 
+    const values = {
+      swapControllers: emulator.getSwapControllers(),
+      origBilinearMode: emulator.getPrefs().getBilinearMode(),
+      bilinearMode: emulator.getPrefs().getBilinearMode(),
+      origScreenSize: emulator.getPrefs().getScreenSize(),
+      screenSize: emulator.getPrefs().getScreenSize(),
+      origScreenControls: emulator.getPrefs().getScreenControls(),
+      screenControls: emulator.getPrefs().getScreenControls(),
+      origVkTransparency: emulator.getPrefs().getVkTransparency(),
+      vkTransparency: emulator.getPrefs().getVkTransparency(),
+      origMediaIndex: emulator.getMediaIndex(),
+      mediaIndex: emulator.getMediaIndex()
+      // origVkCloseOnEnter: emulator.getPrefs().getVkCloseOnEnter(),
+      // vkCloseOnEnter: emulator.getPrefs().getVkCloseOnEnter(),
+    };
+
+    this.shaderService = this.props.emulator.getShadersService();
+    this.shaderService.addEditorValues(values);
+
     this.setState({
-      values: {
-        swapControllers: emulator.getSwapControllers(),
-        origBilinearMode: emulator.getPrefs().isBilinearEnabled(),
-        bilinearMode: emulator.getPrefs().isBilinearEnabled(),
-        origScreenSize: emulator.getPrefs().getScreenSize(),
-        screenSize: emulator.getPrefs().getScreenSize(),
-        origScreenControls: emulator.getPrefs().getScreenControls(),
-        screenControls: emulator.getPrefs().getScreenControls(),
-        origVkTransparency: emulator.getPrefs().getVkTransparency(),
-        vkTransparency: emulator.getPrefs().getVkTransparency(),
-        origMediaIndex: emulator.getMediaIndex(),
-        mediaIndex: emulator.getMediaIndex()
-        // origVkCloseOnEnter: emulator.getPrefs().getVkCloseOnEnter(),
-        // vkCloseOnEnter: emulator.getPrefs().getVkCloseOnEnter(),
-      },
+      values: values,
     });
   }
 
@@ -66,12 +73,11 @@ export class CommodoreSettingsEditor extends Component {
     return (
       <EditorScreen
         showCancel={true}
-        onOk={() => {
+        onOk={async () => {
           let change = false;
           emulator.setSwapControllers(values.swapControllers);
           if (values.origBilinearMode !== values.bilinearMode) {
-            emulator.getPrefs().setBilinearEnabled(values.bilinearMode);
-            emulator.updateBilinearFilter();
+            emulator.getPrefs().setBilinearMode(values.bilinearMode);
             change = true;
           }
           if (values.origScreenSize !== values.screenSize) {
@@ -102,6 +108,11 @@ export class CommodoreSettingsEditor extends Component {
           if (change) {
             emulator.getPrefs().save();
           }
+
+          // Set the shader
+          await this.shaderService.setShader(values.shaderId);
+          emulator.updateBilinearFilter();
+
           onClose();
         }}
         onClose={onClose}
@@ -128,6 +139,7 @@ export class CommodoreSettingsEditor extends Component {
             content: (
               <AppDisplaySettingsTab
                 emulator={emulator}
+                isBilinearMode={true}
                 isActive={tabIndex === 1}
                 showOnScreenControls={showOnScreenControls}
                 setFocusGridComps={setFocusGridComps}
@@ -137,12 +149,26 @@ export class CommodoreSettingsEditor extends Component {
             ),
           },
           {
+            image: BlurImage,
+            label: 'Shader Settings',
+            content: (
+              <ShaderSettingsTab
+                shaderService={this.shaderService}
+                emulator={emulator}
+                isActive={tabIndex === 2}
+                setFocusGridComps={setFocusGridComps}
+                values={values}
+                setValues={setValues}
+              />
+            )
+          },
+          {
             image: KeyboardWhiteImage,
             label: 'Virtual Keyboard Settings',
             content: (
               <CommodoreVirtualKeyboardTab
                   emulator={emulator}
-                  isActive={tabIndex === 2}
+                  isActive={tabIndex === 3}
                   setFocusGridComps={setFocusGridComps}
                   values={values}
                   setValues={setValues}
