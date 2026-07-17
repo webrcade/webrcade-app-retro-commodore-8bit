@@ -4,6 +4,7 @@ import {
   Controllers,
   Controller,
   blobToStr,
+  computeShortNames,
   md5,
   SCREEN_CONTROLS,
   LOG,
@@ -617,49 +618,11 @@ export class Emulator extends RetroAppWrapper {
       FS.close(stream);
     }
 
-    // Determine unique names
-    if (this.mediaList.length > 0) {
-      const compare = this.mediaList[0].originalName;
-
-      let commonEnd = 0;
-      let startParen = -1;
-      let uniqueNameCount = 0;
-      for (commonEnd = 0; commonEnd < compare.length; commonEnd++) {
-        let stop = false;
-        for (let i = 1; i < this.mediaList.length; i++) {
-          if (this.mediaList[i].isSaveDisk) continue;
-
-          uniqueNameCount++;
-
-          const current = this.mediaList[i].originalName;
-          if (commonEnd >= (current.length - 1)) {
-            stop = true;
-            break;
-          }
-
-          if (current[commonEnd] === "(") {
-            startParen = commonEnd;
-          } else if (current[commonEnd] === ")") {
-            startParen = -1;
-          }
-
-          if (current[commonEnd] !== compare[commonEnd]) {
-            stop = true;
-            break;
-          }
-        }
-        if (stop) break;
-      }
-
-      for (let i = 0; i < this.mediaList.length; i++) {
-        if (this.mediaList[i].isSaveDisk) continue;
-        const curr = this.mediaList[i];
-        curr.shortName = curr.originalName.substring(startParen !== -1 ? startParen : uniqueNameCount > 0 ? commonEnd : 0);
-        const lastDot = curr.shortName.indexOf(".");
-        if (lastDot !== -1) {
-          curr.shortName = curr.shortName.substring(0, lastDot);
-        }
-      }
+    const realDisks = this.mediaList.filter(m => !m.isSaveDisk);
+    const shorts = computeShortNames(realDisks.map(m => m.originalName));
+    for (let i = 0; i < realDisks.length; i++) {
+      const dot = shorts[i].indexOf('.');
+      realDisks[i].shortName = dot !== -1 ? shorts[i].substring(0, dot) : shorts[i];
     }
 
     console.log(this.mediaList);
