@@ -377,15 +377,16 @@ export class Emulator extends RetroAppWrapper {
 
         document.onkeydown = (e) => {
 
-          if (
-            this.paused ||
-            this.app.isKeyboardShown() ||
-            (this.isKeyboardJoystickMode() &&
-              this.controllers.getController(0).getKeyCodeToControllerMapping().getKeyCodeToControlId()[e.code] !== undefined)
-          ) {
+          if (this.paused || this.app.isKeyboardShown()) {
             return;
           }
           this.onKeyboardEvent(e);
+          if (
+            this.isKeyboardJoystickMode() &&
+            this.controllers.getController(0).getKeyCodeToControllerMapping().getKeyCodeToControlId()[e.code] !== undefined
+          ) {
+            return;
+          }
 
           if (e.repeat !== undefined && e.repeat) {
             return;
@@ -400,16 +401,16 @@ export class Emulator extends RetroAppWrapper {
         }
 
         document.onkeyup = (e) => {
+          if (this.paused || this.app.isKeyboardShown()) {
+            return;
+          }
+          this.onKeyboardEvent(e);
           if (
-            this.paused ||
-            this.app.isKeyboardShown() ||
-            (this.isKeyboardJoystickMode() &&
-              this.controllers.getController(0).getKeyCodeToControllerMapping().getKeyCodeToControlId()[e.code] !== undefined)
+            this.isKeyboardJoystickMode() &&
+            this.controllers.getController(0).getKeyCodeToControllerMapping().getKeyCodeToControlId()[e.code] !== undefined
           ) {
             return;
           }
-
-          this.onKeyboardEvent(e);
 
           const key = keycodes["" + e.code];
           if (key) {
