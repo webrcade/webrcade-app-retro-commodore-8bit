@@ -547,7 +547,9 @@ export class Emulator extends RetroAppWrapper {
     const { FS } = window;
 
     this.mediaList = [];
-    const saveDisks = this.saveDisks ? this.saveDisks : 1;
+    // Explicit 0 ("none") must stay 0 -- a truthy check would treat it the
+    // same as undefined and silently fall back to 1.
+    const saveDisks = this.saveDisks === undefined ? 1 : this.saveDisks;
 
     let saveDiskIndex = 0;
 
