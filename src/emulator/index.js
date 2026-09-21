@@ -67,8 +67,24 @@ export class Emulator extends RetroAppWrapper {
 
     super.pollControls();
 
+    // WRC - LTRIG+RANALOG opens the virtual keyboard, via the shared
+    // CIDS.WRC_CUSTOM synthetic control (see its own comment in
+    // @webrcade/app-common/src/input/controls.js) rather than the old
+    // handleEscape()/CIDS.ESCAPE interception (removed) - that combo
+    // stopped synthesizing CIDS.ESCAPE, so this app now uses the control
+    // reserved to replace it instead.
     if (!this.paused) {
-      if (controllers.isControlDown(0, CIDS.SELECT)) {
+      if (controllers.isControlDown(0, CIDS.WRC_CUSTOM)) {
+        if (!this.gamepadVkPending) {
+          this.gamepadVkPending = true;
+          controllers
+            .waitUntilControlReleased(0, CIDS.WRC_CUSTOM)
+              .then(() => {
+                this.gamepadVkPending = false;
+                this.toggleKeyboard();
+              });
+        }
+      } else if (controllers.isControlDown(0, CIDS.SELECT)) {
         if (this.selectDown) return;
         this.selectDown = true;
         controllers
@@ -338,23 +354,6 @@ export class Emulator extends RetroAppWrapper {
   isKeyboardEvent() {
     return this.keyboardEvent;
   }
-
-  handleEscape(controllers) {
-    if (controllers.isControlDown(0, CIDS.LTRIG) && controllers.isControlDown(0, CIDS.RANALOG)) {
-      if (!this.gamepadVkPending) {
-        this.gamepadVkPending = true;
-        controllers
-        .waitUntilControlReleased(0 /*i*/, CIDS.ESCAPE)
-          .then(() => {
-            this.gamepadVkPending = false;
-            this.toggleKeyboard();
-          });
-      }
-      return true;
-    }
-    return false;
-  }
-
 
   onFrame() {
     if (this.firstFrame) {
