@@ -361,6 +361,7 @@ export class Emulator extends RetroAppWrapper {
 
       // Initial joystick mode
       this.setKeyboardJoystickMode(this.isKeyboardJoystickMode());
+      this.updateVkTransparency();
 
       setTimeout(() => {
         const onTouch = () => { this.onTouchEvent() };
