@@ -67,8 +67,24 @@ export class Emulator extends RetroAppWrapper {
 
     super.pollControls();
 
+    // WRC - LTRIG+RANALOG opens the virtual keyboard, via the shared
+    // CIDS.WRC_CUSTOM synthetic control (see its own comment in
+    // @webrcade/app-common/src/input/controls.js) rather than the old
+    // handleEscape()/CIDS.ESCAPE interception (removed) - that combo
+    // stopped synthesizing CIDS.ESCAPE, so this app now uses the control
+    // reserved to replace it instead.
     if (!this.paused) {
-      if (controllers.isControlDown(0, CIDS.SELECT)) {
+      if (controllers.isControlDown(0, CIDS.WRC_CUSTOM)) {
+        if (!this.gamepadVkPending) {
+          this.gamepadVkPending = true;
+          controllers
+            .waitUntilControlReleased(0, CIDS.WRC_CUSTOM)
+              .then(() => {
+                this.gamepadVkPending = false;
+                this.toggleKeyboard();
+              });
+        }
+      } else if (controllers.isControlDown(0, CIDS.SELECT)) {
         if (this.selectDown) return;
         this.selectDown = true;
         controllers
@@ -339,29 +355,13 @@ export class Emulator extends RetroAppWrapper {
     return this.keyboardEvent;
   }
 
-  handleEscape(controllers) {
-    if (controllers.isControlDown(0, CIDS.LTRIG) && controllers.isControlDown(0, CIDS.RANALOG)) {
-      if (!this.gamepadVkPending) {
-        this.gamepadVkPending = true;
-        controllers
-        .waitUntilControlReleased(0 /*i*/, CIDS.ESCAPE)
-          .then(() => {
-            this.gamepadVkPending = false;
-            this.toggleKeyboard();
-          });
-      }
-      return true;
-    }
-    return false;
-  }
-
-
   onFrame() {
     if (this.firstFrame) {
       this.firstFrame = false;
 
       // Initial joystick mode
       this.setKeyboardJoystickMode(this.isKeyboardJoystickMode());
+      this.updateVkTransparency();
 
       setTimeout(() => {
         const onTouch = () => { this.onTouchEvent() };
@@ -377,15 +377,16 @@ export class Emulator extends RetroAppWrapper {
 
         document.onkeydown = (e) => {
 
-          if (
-            this.paused ||
-            this.app.isKeyboardShown() ||
-            (this.isKeyboardJoystickMode() &&
-              this.controllers.getController(0).getKeyCodeToControllerMapping().getKeyCodeToControlId()[e.code] !== undefined)
-          ) {
+          if (this.paused || this.app.isKeyboardShown()) {
             return;
           }
           this.onKeyboardEvent(e);
+          if (
+            this.isKeyboardJoystickMode() &&
+            this.controllers.getController(0).getKeyCodeToControllerMapping().getKeyCodeToControlId()[e.code] !== undefined
+          ) {
+            return;
+          }
 
           if (e.repeat !== undefined && e.repeat) {
             return;
@@ -400,16 +401,16 @@ export class Emulator extends RetroAppWrapper {
         }
 
         document.onkeyup = (e) => {
+          if (this.paused || this.app.isKeyboardShown()) {
+            return;
+          }
+          this.onKeyboardEvent(e);
           if (
-            this.paused ||
-            this.app.isKeyboardShown() ||
-            (this.isKeyboardJoystickMode() &&
-              this.controllers.getController(0).getKeyCodeToControllerMapping().getKeyCodeToControlId()[e.code] !== undefined)
+            this.isKeyboardJoystickMode() &&
+            this.controllers.getController(0).getKeyCodeToControllerMapping().getKeyCodeToControlId()[e.code] !== undefined
           ) {
             return;
           }
-
-          this.onKeyboardEvent(e);
 
           const key = keycodes["" + e.code];
           if (key) {
@@ -546,7 +547,9 @@ export class Emulator extends RetroAppWrapper {
     const { FS } = window;
 
     this.mediaList = [];
-    const saveDisks = this.saveDisks ? this.saveDisks : 1;
+    // Explicit 0 ("none") must stay 0 -- a truthy check would treat it the
+    // same as undefined and silently fall back to 1.
+    const saveDisks = this.saveDisks === undefined ? 1 : this.saveDisks;
 
     let saveDiskIndex = 0;
 
